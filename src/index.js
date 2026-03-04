@@ -84,6 +84,7 @@ program
   .option('--min-shared <n>', 'Min shared duplicate groups for overlap report', '3')
   .option('--limit <n>', 'Max results to display', '30')
   .option('--review', 'Interactively review folder pairs and mark for deletion')
+  .option('--sort <by>', 'Sort review order: size|depth|overlap', 'size')
   .action(foldersCommand);
 
 program

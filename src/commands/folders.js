@@ -74,7 +74,7 @@ export async function foldersCommand(options) {
 
   // === Display or Review ===
   if (options.review) {
-    await reviewFolders(overlapResults, fpResults, driveId);
+    await reviewFolders(overlapResults, fpResults, driveId, options.sort || 'size');
   } else {
     displayReport(overlapResults, fpResults, overlapElapsed, fpElapsed, minShared, limit);
   }
@@ -133,8 +133,8 @@ function displayReport(overlapResults, fpResults, overlapElapsed, fpElapsed, min
   console.log(`  gws-tools folders --drive-id <id> --review\n`);
 }
 
-async function reviewFolders(overlapResults, fpResults, driveId) {
-  // Build a unified list: fingerprint matches first (exact copies), then overlap pairs
+async function reviewFolders(overlapResults, fpResults, driveId, sort = 'size') {
+  // Build a unified list from both analyses
   const reviewItems = [];
 
   for (const fp of fpResults) {
@@ -149,6 +149,8 @@ async function reviewFolders(overlapResults, fpResults, driveId) {
         filesB: fp.fileCount,
         overlapPct: 100,
         recoverableSize: fp.totalSize,
+        sizeA: fp.totalSize,
+        sizeB: fp.totalSize,
         label: 'Identical (fingerprint)',
       });
     }
@@ -174,8 +176,29 @@ async function reviewFolders(overlapResults, fpResults, driveId) {
     return;
   }
 
-  console.log(chalk.bold(`\n=== Folder Review: ${reviewItems.length} pairs to review ===`));
-  console.log(chalk.dim('Identical folders shown first, then highest overlap.\n'));
+  // Sort review items based on user preference
+  const pathDepth = (p) => (p.match(/\//g) || []).length;
+
+  if (sort === 'size') {
+    reviewItems.sort((a, b) => b.recoverableSize - a.recoverableSize);
+  } else if (sort === 'depth') {
+    // Shallowest paths first (highest-level directories)
+    reviewItems.sort((a, b) => {
+      const depthA = Math.min(pathDepth(a.folderA), pathDepth(a.folderB));
+      const depthB = Math.min(pathDepth(b.folderA), pathDepth(b.folderB));
+      if (depthA !== depthB) return depthA - depthB;
+      return b.recoverableSize - a.recoverableSize; // tiebreak by size
+    });
+  } else if (sort === 'overlap') {
+    reviewItems.sort((a, b) => {
+      if (b.overlapPct !== a.overlapPct) return b.overlapPct - a.overlapPct;
+      return b.recoverableSize - a.recoverableSize;
+    });
+  }
+
+  const sortLabel = sort === 'size' ? 'largest first' : sort === 'depth' ? 'shallowest paths first' : 'highest overlap first';
+  console.log(chalk.bold(`\n=== Folder Review: ${reviewItems.length} pairs to review (${sortLabel}) ===`));
+  console.log(chalk.dim('Use --sort size|depth|overlap to change order.\n'));
 
   const startTime = Date.now();
   let totalGroupsUpdated = 0;
