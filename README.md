@@ -16,7 +16,7 @@ Scans a Shared Drive via the Google Drive API, stores file metadata locally in S
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/cleichsenring/GoogleWorkspaceAdminCLITools
 cd gws-tools
 npm install
 ```
